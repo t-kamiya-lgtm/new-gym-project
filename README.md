@@ -12,11 +12,11 @@
 - `src/lib/statements.ts`: 月次締め・単価tier計算ロジック(現行gym-systemから移植)
 - `src/app/`: Next.js App Router の最小スケルトン(ダッシュボード・締め画面等は未実装)
 
-未実装・要確認事項は `HANDOVER.md` の「5.3 実装着手にあたり確認が必要な項目チェックリスト」を参照してください。特に以下は現時点で**仮の実装**です。
+未実装・要確認事項は `HANDOVER.md` の「5.3 実装着手にあたり確認が必要な項目チェックリスト」を参照してください。特に以下は現時点で**仮の実装/仮データ**です。
 
 - `src/lib/smaregi/sync.ts` の `ORDER_STATUS_TO_SHIPMENT_FLAG`: 実際の`order_status`マスタ値が未確認のため仮のマッピング
-- `member_key` に `order.customer_id` を採用(仮): `smaregi_customer_id` との使い分けは未確定
-- `products` テーブルの初期データ(商品コード・pt換算)は未投入
+- `member_key` は `order.customer_id` を採用(確定)
+- `supabase/migrations/0002_seed_dummy_and_products.sql`: 法人・店舗は**ダミーデータ**(実データ待ち)。商品は4品番(プロテインモンスター/ソバ、それぞれ10食セット単品・定期)で確定だが、`product_code`はスマレジ側の実品番が未確定のため仮コード
 
 ## セットアップ
 

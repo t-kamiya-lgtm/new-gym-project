@@ -8,6 +8,7 @@
 
 - `supabase/migrations/0001_init.sql`: 法人・店舗(広告コード1:1)・商品・受注明細台帳・月次締めのスキーマ
 - `src/lib/smaregi/client.ts`: スマレジEC `orders/search` APIクライアント(PII項目は`except_fields`で除外して取得)
+- `src/lib/smaregi/oauth.ts` + `src/app/api/smaregi/oauth/{start,callback}/route.ts`: 外部アプリ連携のOAuth2認可コードフロー(手順はHANDOVER.md 5.3.1参照)。取得したアクセストークンは`smaregi_oauth_tokens`テーブルに保存し、`syncOrders()`が自動で使用する
 - `src/lib/smaregi/sync.ts`: 受注同期ロジック(ポーリング、広告コード→店舗マッピング、ポイント換算、`order_lines`へのupsert)
 - `src/lib/statements.ts`: 月次締め・単価tier計算ロジック(現行gym-systemから移植)
 - `src/app/`: Next.js App Router の最小スケルトン(ダッシュボード・締め画面等は未実装)

@@ -1,4 +1,5 @@
 import { SmaregiClient } from "./client";
+import { getStoredAccessToken } from "./oauth";
 import type { SmaregiOrder } from "./types";
 import { createServiceClient } from "../supabase";
 
@@ -34,9 +35,10 @@ interface ProductLookup {
   byCode: Map<string, number>; // product_code -> points_per_unit
 }
 
-export async function syncOrders(options: { accessToken: string; sinceMinutes?: number }) {
+export async function syncOrders(options: { accessToken?: string; sinceMinutes?: number } = {}) {
   const supabase = createServiceClient();
-  const client = new SmaregiClient({ accessToken: options.accessToken });
+  const accessToken = options.accessToken ?? (await getStoredAccessToken());
+  const client = new SmaregiClient({ accessToken });
 
   const { data: syncState } = await supabase
     .from("order_sync_state")

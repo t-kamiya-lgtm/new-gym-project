@@ -4,6 +4,6 @@
   "version": "0.1.0",
   "description": "Google Apps Script project for the Rakuten RPP keyword management system (see docs/rakuten-rpp-management-design.md).",
   "scripts": {
-    "test": "node test/csvUtils.test.js && node test/pricingModel.test.js && node test/colLetter.test.js"
+    "test": "node test/csvUtils.test.js && node test/pricingModel.test.js && node test/colLetter.test.js && node test/organicRankChecker.test.js"
   }
 }

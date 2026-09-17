@@ -71,16 +71,17 @@ Apps Scriptエディタ > プロジェクトの設定 > スクリプト プロ�
 
 - **広告表示順位はRPPレポートに含まれないため自動取得できない**。`RPP_KW管理表`の「広告表示順位」列と
   `順位履歴ログ`の該当列は手動入力のまま運用する(自然検索順位のみAPIで自動取得)
-- 自然検索順位チェックに使う `itemCode`(`florahouse:pm` / `florahouse:pm_sova`)は
-  商品ページURLからの推定値。楽天市場商品検索APIへの初回疎通時に、実際にヒットするか確認すること
-  (`OrganicRankChecker.js` のログでエラーが出ないか確認する)
+- 自然検索順位チェックでの商品突合は `itemUrl`(商品ページURLのスラッグ`/florahouse/pm/`等)で行う。
+  当初`itemCode`(`florahouse:pm`形式)で突合する想定だったが、2026-09-17の実機テストで
+  APIの`itemCode`は`florahouse:10000165`のような予測不可能な内部管理番号であることが判明し、
+  全KWが圏外になる誤判定が起きたため`itemUrl`突合方式に変更済み(`Constants.js`の`PRODUCT_ITEM_URL_PATH`)
 - **楽天ウェブサービスは2026年2月にAPI移行があり、エンドポイントと認証方式が変わっている**
   (旧`app.rakuten.co.jp/services/api/...` + `applicationId`のみ → 新`https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701`
-  + `applicationId`(UUID形式)と`accessKey`の両方が必須、`genreId`パラメータも必須)。
-  `OrganicRankChecker.js`は新方式に対応済みだが、検索結果内の商品識別フィールドが
-  従来通り`item.itemCode`(`shop:code`形式の1文字列)なのか、`item.shopCode`/`item.itemCode`に
-  分かれているのかは未確定だったため、`itemMatches_()`で両方のパターンに対応させている。
-  実際に自然検索順位が正しく取得できるか(0件や圏外ばかりにならないか)を初回疎通時に確認すること
+  + `applicationId`(UUID形式)と`accessKey`の両方が必須、`genreId`パラメータも必須)。対応済み
+- **新規作成したRakuten Developersアプリは、APIアクセススコープに「楽天市場API」を明示的にチェックしないと
+  `REQUESTED_SCOPES_NOT_ALLOWED`(HTTP 403)エラーになる**。フォーム送信時にエラーが出て再送信すると
+  スコープ選択がリセットされることがあるため、アプリ作成後は「詳細」画面で
+  スコープが実際に付与されているか必ず確認すること
 - 他施策レポート(クーポンアドバンス等)は実サンプル未確認のため、`OtherPromoImporter.js` は
   列マッピングをせず生データ(JSON)をそのまま`他施策ログ`に積むだけの実装になっている。
   実サンプルが手に入ったら、`RppReportImporter.js`の`RPP_CSV_COLUMN_MAP`と同じ要領で

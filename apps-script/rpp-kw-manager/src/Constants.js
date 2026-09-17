@@ -19,10 +19,13 @@ var PRODUCT_ITEM_CODE_MAP = {
   pm_sova: 'Soba',
 };
 
-// 楽天市場商品検索APIで使う itemCode (shopCode:itemUrlCode)。設計書 11章 参照(要API疎通検証)。
-var PRODUCT_RAKUTEN_ITEM_CODE = {
-  Monster: 'florahouse:pm',
-  Soba: 'florahouse:pm_sova',
+// 楽天市場商品検索APIのレスポンスの itemCode は "shopCode:内部管理番号"(例: florahouse:10000165)
+// という事前に分からない値になっており、itemCodeでの突合はできないことが2026-09-17の実機テストで判明した。
+// 代わりに、レスポンスの itemUrl に含まれる商品ページURLのパス(既知のスラッグ)で突合する。
+// 設計書 11章・13-1章 参照。
+var PRODUCT_ITEM_URL_PATH = {
+  Monster: '/florahouse/pm/',
+  Soba: '/florahouse/pm_sova/',
 };
 
 // RPP_KW管理表の列。この配列の並び順がシートの列順になる(SetupSpreadsheet.js 参照)。
@@ -78,7 +81,7 @@ if (typeof module !== 'undefined') {
   module.exports = {
     SHEET_NAMES: SHEET_NAMES,
     PRODUCT_ITEM_CODE_MAP: PRODUCT_ITEM_CODE_MAP,
-    PRODUCT_RAKUTEN_ITEM_CODE: PRODUCT_RAKUTEN_ITEM_CODE,
+    PRODUCT_ITEM_URL_PATH: PRODUCT_ITEM_URL_PATH,
     KW_MASTER_COLUMNS: KW_MASTER_COLUMNS,
     RPP_CSV_COLUMN_MAP: RPP_CSV_COLUMN_MAP,
   };

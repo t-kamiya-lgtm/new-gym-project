@@ -358,7 +358,7 @@ IF 目安CPC(または現CPC) > 目標CPA(該当商品・セットの) THEN
 - [x] 8月のアクセス急減の要因 → Meta広告/インフルエンサー施策の強弱による(9-1参照)。RPP側の異常ではない
 - [x] Monster/Sobaの栄養成分・原材料の違い → 2-1に反映済み。KW訴求の優先度づけに活用
 - [x] RMSのRPPレポートCSVの実サンプル → 4-1に列マッピング・エンコーディング(Shift-JIS)・ヘッダー検出ロジックまで反映済み。**「広告表示順位」はCSVに含まれないことが判明**(手動入力に設計変更)
-- [x] Monster/Sobaの自社itemCode → RPP CSVの商品ページURL(`item.rakuten.co.jp/florahouse/pm/`、`.../pm_sova/`)から、楽天市場商品検索APIのitemCode形式`florahouse:pm`(Monster)/`florahouse:pm_sova`(Soba)と推定。API疎通確認時に実際にヒットするか要検証
+- [x] Monster/Sobaの自社itemCode → 2026-09-17の実機テストで、APIの`itemCode`は`florahouse:10000165`のような**事前に分からない内部管理番号**であることが判明し、`florahouse:pm`形式の推定は誤りだった。代わりに`itemUrl`に含まれる商品ページURLのスラッグ(`/florahouse/pm/`、`/florahouse/pm_sova/`)で突合する方式に変更(13-2章参照)
 - [x] 楽天Web Service(Rakuten Developers)の`applicationId`取得状況 → デプロイ作業の中で確認したところ、以前の「連携実績」はRMS WEB SERVICE(店舗の在庫・注文を外部システムと繋ぐ別物のAPI)だったと判明し、Rakuten Developers(`webservice.rakuten.co.jp`)側は新規登録が必要だった。新規にアプリを作成し取得済み。あわせて、**2026年2月に楽天ウェブサービスのAPI移行があり、エンドポイントが変わりアクセスキーが追加で必要になっている**ことが判明(4-2章・11章参照)
 - [x] 目標ROAS・目標CPAの考え方 → 「全体売上ベースで増し分利益率10%を残す」方針で確定(10-2)。個別KWは購入意図に応じた3ライン(新規獲得/標準/大容量、10-4-1/10-4-2)で判定する
 - [x] RPPレポート取込・自然検索順位チェックの頻度 → 既存運用に合わせ週2回(月・木)で確定(7章)
@@ -399,6 +399,13 @@ IF 目安CPC(または現CPC) > 目標CPA(該当商品・セットの) THEN
    - **`accessKey`という新しい認証情報が追加で必須**になっている(URLパラメータとして`applicationId`と並べて付与)
    - `genreId`パラメータも必須(`0`=全ジャンルを指定)
 
-`OrganicRankChecker.js`・`Config.js`は新方式に対応済み(`RAKUTEN_ACCESS_KEY`をScript Propertiesに追加)。ただし検索結果の商品識別フィールドが移行後も`item.itemCode`(`shop:code`の1文字列)のままか、`item.shopCode`/`item.itemCode`に分かれたかは未確認のため、`itemMatches_()`で両方の形に対応させている。
+`OrganicRankChecker.js`・`Config.js`は新方式に対応済み(`RAKUTEN_ACCESS_KEY`をScript Propertiesに追加)。
 
-- **未検証(引き続き)**: 上記の自然検索順位チェックが実際に正しい順位を返すか(itemCodeの実ヒット確認)、他施策レポートの実サンプルでの列マッピングは、初回の`checkOrganicRanks`実行結果を見て確認する
+### 13-2. 実機テストで判明したAPIアクセススコープ・itemCodeの2つの問題
+
+本番スプレッドシートで`checkOrganicRanks`を実行し、2段階のエラー・誤判定を修正した。
+
+1. **`REQUESTED_SCOPES_NOT_ALLOWED`(HTTP 403)エラー**: アプリ作成時に「楽天市場API」のスコープにチェックを入れたはずが、その後のフォーム入力エラー(URL欄の形式不正)による再送信の過程でスコープ選択がリセットされていた。アプリの「編集」画面でスコープを付け直して解消
+2. **スコープ修正後もブランド名検索(「プロテインモンスター」)まで含めて全KWが「圏外」になる誤判定**: APIテストフォームで実際のレスポンスを確認したところ、`Items[].Item.itemCode`は`florahouse:10000165`のような**事前に予測不可能な内部管理番号**であり、想定していた`florahouse:pm`形式ではなかった。一方`itemUrl`には商品ページURL(`https://item.rakuten.co.jp/florahouse/pm_sova/?...`)がそのまま含まれていたため、**`itemCode`ではなく`itemUrl`に既知のURLスラッグが含まれるかで突合する方式**に変更した(`Constants.js`の`PRODUCT_ITEM_URL_PATH`、`OrganicRankChecker.js`の`itemUrlMatches_()`)。実際の楽天APIレスポンス(2026-09-17取得)をNodeテストの固定データとして保存し、この突合ロジックが正しく動くことを検証済み(`test/organicRankChecker.test.js`)
+
+- **未検証(引き続き)**: itemUrl突合方式での自然検索順位チェックが実際のKWで妥当な順位を返すか(圏外ばかりにならないか)、他施策レポートの実サンプルでの列マッピングは、次回の`checkOrganicRanks`実行結果を見て確認する

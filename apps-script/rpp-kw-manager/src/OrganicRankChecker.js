@@ -52,15 +52,15 @@ function checkOrganicRanks() {
     var kw = row[colIndex['KW'] - 1];
     if (!product || !kw) continue;
 
-    var itemCode = PRODUCT_RAKUTEN_ITEM_CODE[product];
-    if (!itemCode) {
-      Logger.log('商品「' + product + '」に対応するitemCodeが未設定のためスキップ: ' + kw);
+    var urlPath = PRODUCT_ITEM_URL_PATH[product];
+    if (!urlPath) {
+      Logger.log('商品「' + product + '」に対応する商品ページURLが未設定のためスキップ: ' + kw);
       continue;
     }
 
     var rank = null;
     try {
-      rank = findOrganicRank_(kw, itemCode, config.RAKUTEN_APP_ID, config.RAKUTEN_ACCESS_KEY);
+      rank = findOrganicRank_(kw, urlPath, config.RAKUTEN_APP_ID, config.RAKUTEN_ACCESS_KEY);
     } catch (e) {
       Logger.log('自然検索順位チェック失敗 (' + product + ' / ' + kw + '): ' + e.message);
       continue;
@@ -95,10 +95,16 @@ function checkOrganicRanks() {
 
 /**
  * Searches up to MAX_PAGES pages of HITS_PER_PAGE results for `keyword` and
- * returns the 1-based overall rank of `itemCode`, or null if not found within
- * the searched range (treated as 圏外).
+ * returns the 1-based overall rank of the item whose `itemUrl` contains
+ * `targetUrlPath`, or null if not found within the searched range (圏外).
+ *
+ * NOTE: matching is done via itemUrl, not itemCode. A live test on 2026-09-17
+ * showed the API's `itemCode` is "shopCode:内部管理番号" (e.g.
+ * "florahouse:10000165") — an opaque internal ID we have no way to know in
+ * advance — rather than the URL slug ("pm"/"pm_sova") we originally assumed.
+ * itemUrl still contains that known slug, so it's the reliable match key.
  */
-function findOrganicRank_(keyword, itemCode, appId, accessKey) {
+function findOrganicRank_(keyword, targetUrlPath, appId, accessKey) {
   for (var page = 1; page <= MAX_PAGES; page++) {
     var url =
       RAKUTEN_ITEM_SEARCH_ENDPOINT +
@@ -120,7 +126,7 @@ function findOrganicRank_(keyword, itemCode, appId, accessKey) {
     var items = json.Items || [];
     for (var i = 0; i < items.length; i++) {
       var item = items[i].Item;
-      if (item && itemMatches_(item, itemCode)) {
+      if (item && itemUrlMatches_(item.itemUrl, targetUrlPath)) {
         return (page - 1) * HITS_PER_PAGE + i + 1;
       }
     }
@@ -133,18 +139,13 @@ function findOrganicRank_(keyword, itemCode, appId, accessKey) {
 }
 
 /**
- * Matches a search-result item against our target itemCode ("shopCode:itemUrlCode").
- * Handles both the classic combined `item.itemCode` field and a possible
- * split `item.shopCode`/`item.itemCode` response shape from the 2026-02
- * API migration, since it wasn't confirmed which one the new version returns
- * (see docs/rakuten-rpp-management-design.md section 11).
+ * Pure predicate (no GAS globals) so it can be unit tested under Node against
+ * the real API response captured on 2026-09-17.
  */
-function itemMatches_(item, targetItemCode) {
-  if (item.itemCode === targetItemCode) {
-    return true;
-  }
-  if (item.shopCode && item.itemCode && item.shopCode + ':' + item.itemCode === targetItemCode) {
-    return true;
-  }
-  return false;
+function itemUrlMatches_(itemUrl, targetUrlPath) {
+  return !!itemUrl && itemUrl.indexOf(targetUrlPath) !== -1;
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = { itemUrlMatches_: itemUrlMatches_ };
 }

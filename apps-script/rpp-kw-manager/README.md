@@ -42,7 +42,8 @@ Apps Scriptエディタ > プロジェクトの設定 > スクリプト プロ�
 
 | キー | 内容 |
 |---|---|
-| `RAKUTEN_APP_ID` | 既存の楽天Web ServiceアプリのapplicationId(申込済み、流用可) |
+| `RAKUTEN_APP_ID` | Rakuten Developersアプリのアプリケーション ID(2026年2月のAPI移行後はUUID形式) |
+| `RAKUTEN_ACCESS_KEY` | 同アプリのアクセスキー(2026年2月の移行で追加された必須パラメータ。下記「現状の制約」参照) |
 | `SPREADSHEET_ID` | このKW管理表スプレッドシートのID |
 | `RPP_REPORT_FOLDER_ID` | RPPレポートCSVを投入するDriveフォルダ |
 | `RPP_REPORT_PROCESSED_FOLDER_ID` | 取込済みRPPレポートの退避先フォルダ |
@@ -73,6 +74,13 @@ Apps Scriptエディタ > プロジェクトの設定 > スクリプト プロ�
 - 自然検索順位チェックに使う `itemCode`(`florahouse:pm` / `florahouse:pm_sova`)は
   商品ページURLからの推定値。楽天市場商品検索APIへの初回疎通時に、実際にヒットするか確認すること
   (`OrganicRankChecker.js` のログでエラーが出ないか確認する)
+- **楽天ウェブサービスは2026年2月にAPI移行があり、エンドポイントと認証方式が変わっている**
+  (旧`app.rakuten.co.jp/services/api/...` + `applicationId`のみ → 新`https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701`
+  + `applicationId`(UUID形式)と`accessKey`の両方が必須、`genreId`パラメータも必須)。
+  `OrganicRankChecker.js`は新方式に対応済みだが、検索結果内の商品識別フィールドが
+  従来通り`item.itemCode`(`shop:code`形式の1文字列)なのか、`item.shopCode`/`item.itemCode`に
+  分かれているのかは未確定だったため、`itemMatches_()`で両方のパターンに対応させている。
+  実際に自然検索順位が正しく取得できるか(0件や圏外ばかりにならないか)を初回疎通時に確認すること
 - 他施策レポート(クーポンアドバンス等)は実サンプル未確認のため、`OtherPromoImporter.js` は
   列マッピングをせず生データ(JSON)をそのまま`他施策ログ`に積むだけの実装になっている。
   実サンプルが手に入ったら、`RppReportImporter.js`の`RPP_CSV_COLUMN_MAP`と同じ要領で

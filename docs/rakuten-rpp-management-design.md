@@ -175,7 +175,7 @@ flowchart TB
 | データ保存/UI | Googleスプレッドシート |
 | バッチ処理 | Google Apps Script(時間主導トリガー) |
 | ファイル連携 | Google Drive API(GAS組み込みの`DriveApp`) |
-| 自然検索順位取得 | 楽天市場商品検索API(Rakuten Web Service。`applicationId`は既存アプリで申込・連携実績があるものを流用) |
+| 自然検索順位取得 | 楽天市場商品検索API(Rakuten Developers/Web Service。2026年2月のAPI移行後はエンドポイント`openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701`、`applicationId`+`accessKey`の2つが必要。11章参照) |
 | RPPレポート実績取込 | CSVパース(RMSエクスポート) |
 | 秘匿情報管理 | GAS Script Properties(APIキー等をシートに直書きしない) |
 
@@ -359,7 +359,7 @@ IF 目安CPC(または現CPC) > 目標CPA(該当商品・セットの) THEN
 - [x] Monster/Sobaの栄養成分・原材料の違い → 2-1に反映済み。KW訴求の優先度づけに活用
 - [x] RMSのRPPレポートCSVの実サンプル → 4-1に列マッピング・エンコーディング(Shift-JIS)・ヘッダー検出ロジックまで反映済み。**「広告表示順位」はCSVに含まれないことが判明**(手動入力に設計変更)
 - [x] Monster/Sobaの自社itemCode → RPP CSVの商品ページURL(`item.rakuten.co.jp/florahouse/pm/`、`.../pm_sova/`)から、楽天市場商品検索APIのitemCode形式`florahouse:pm`(Monster)/`florahouse:pm_sova`(Soba)と推定。API疎通確認時に実際にヒットするか要検証
-- [x] 楽天Web Service(Rakuten Developers)の`applicationId`取得状況 → 申込済み、他アプリとの連携実績もあり。4-2の自然検索順位チェッカーはこの既存のapplicationIdを流用できる
+- [x] 楽天Web Service(Rakuten Developers)の`applicationId`取得状況 → デプロイ作業の中で確認したところ、以前の「連携実績」はRMS WEB SERVICE(店舗の在庫・注文を外部システムと繋ぐ別物のAPI)だったと判明し、Rakuten Developers(`webservice.rakuten.co.jp`)側は新規登録が必要だった。新規にアプリを作成し取得済み。あわせて、**2026年2月に楽天ウェブサービスのAPI移行があり、エンドポイントが変わりアクセスキーが追加で必要になっている**ことが判明(4-2章・11章参照)
 - [x] 目標ROAS・目標CPAの考え方 → 「全体売上ベースで増し分利益率10%を残す」方針で確定(10-2)。個別KWは購入意図に応じた3ライン(新規獲得/標準/大容量、10-4-1/10-4-2)で判定する
 - [x] RPPレポート取込・自然検索順位チェックの頻度 → 既存運用に合わせ週2回(月・木)で確定(7章)
 - [x] 非入稿KWも含めた全量KWリストの管理方法 → 自動生成はせず、引き続き手動でKW管理表に追記する運用でよいと確認(7章)
@@ -386,4 +386,19 @@ IF 目安CPC(または現CPC) > 目標CPA(該当商品・セットの) THEN
 - **判定ロジック**: 4-3章の判定マトリクスは、設計方針どおりGASではなく**`RPP_KW管理表`上のARRAYFORMULA/IFS数式**として実装し、`SetupSpreadsheet.js`が初回セットアップ時に設置する。目標CPA/目標ROASも`設定`シート上の数式(10-2章の式をそのまま反映)で計算されるため、目標増し分利益率(初期値10%)を`設定`シートで書き換えるだけで全KWの目標値が再計算される
 - **運用頻度**: `Triggers.js`が月・木朝6時のトリガーを設置(7章)
 - **テスト**: GASに依存しない純粋ロジック(CSVパース、増し分利益/目標CPA計算)は`apps-script/rpp-kw-manager/test/`でNodeユニットテスト化し、実際のRPPレポートの構造(4-1章)や10章の目標CPA/ROASの数値と一致することを検証済み(`npm test`)
-- **未検証**: 楽天API疎通(itemCodeの実ヒット確認)、実際のGoogle Sheets上でのARRAYFORMULA動作、他施策レポートの実サンプルでの列マッピングは、本番スプレッドシートへのデプロイ後に確認が必要(README.mdの「現状の制約・要検証事項」に記載)
+- **本番スプレッドシートでの動作確認(2026-09-17実施)**: `runInitialSetup`実行により7シート・`設定`シートの目標CPA/ROAS数式が想定通り生成されることを確認済み(10-4-1/10-4-2の数値と一致)。`RPP_KW管理表`の列構成も想定通り
+
+### 13-1. デプロイ中に判明した2026年2月の楽天ウェブサービスAPI移行
+
+実際にRakuten Developersでアプリを新規登録する過程で、当初の想定と異なる点が2つ判明した。
+
+1. **以前の「連携実績」はRMS WEB SERVICE(店舗の在庫・注文を外部システムと連携する別物のAPI)だった**。Rakuten Developers(`webservice.rakuten.co.jp`、今回の自然検索順位チェックに使うAPI基盤)は今回が初利用で、新規にアプリ登録が必要だった
+2. **2026年2月に楽天ウェブサービス側でAPI移行があり、エンドポイントと認証方式が変わっていた**(サイト上の「[重要][お知らせ] 2026-02-10 楽天ウェブサービスのAPI移行に関するご案内」で確認)
+   - エンドポイント: 旧`app.rakuten.co.jp/services/api/IchibaItem/Search/20220601` → 新`https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701`
+   - アプリケーションID: 旧は19桁程度の数字 → 新はUUID形式
+   - **`accessKey`という新しい認証情報が追加で必須**になっている(URLパラメータとして`applicationId`と並べて付与)
+   - `genreId`パラメータも必須(`0`=全ジャンルを指定)
+
+`OrganicRankChecker.js`・`Config.js`は新方式に対応済み(`RAKUTEN_ACCESS_KEY`をScript Propertiesに追加)。ただし検索結果の商品識別フィールドが移行後も`item.itemCode`(`shop:code`の1文字列)のままか、`item.shopCode`/`item.itemCode`に分かれたかは未確認のため、`itemMatches_()`で両方の形に対応させている。
+
+- **未検証(引き続き)**: 上記の自然検索順位チェックが実際に正しい順位を返すか(itemCodeの実ヒット確認)、他施策レポートの実サンプルでの列マッピングは、初回の`checkOrganicRanks`実行結果を見て確認する

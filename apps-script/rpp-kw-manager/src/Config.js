@@ -4,7 +4,8 @@
  * or run `setScriptProperties_()` below with real values filled in.
  *
  * Required keys:
- *   RAKUTEN_APP_ID                    既存の楽天Web ServiceアプリのapplicationId
+ *   RAKUTEN_APP_ID                    楽天Web ServiceアプリのアプリケーションID(2026年2月移行後はUUID形式)
+ *   RAKUTEN_ACCESS_KEY                同アプリのアクセスキー(2026年2月のAPI移行で追加された認証情報。11章参照)
  *   SPREADSHEET_ID                    このKW管理表スプレッドシートのID
  *   RPP_REPORT_FOLDER_ID              RPPレポートCSVを投入するDriveフォルダ
  *   RPP_REPORT_PROCESSED_FOLDER_ID    取込済みRPPレポートの退避先フォルダ
@@ -16,6 +17,7 @@ function getConfig() {
   var props = PropertiesService.getScriptProperties();
   var config = {
     RAKUTEN_APP_ID: props.getProperty('RAKUTEN_APP_ID'),
+    RAKUTEN_ACCESS_KEY: props.getProperty('RAKUTEN_ACCESS_KEY'),
     SPREADSHEET_ID: props.getProperty('SPREADSHEET_ID'),
     RPP_REPORT_FOLDER_ID: props.getProperty('RPP_REPORT_FOLDER_ID'),
     RPP_REPORT_PROCESSED_FOLDER_ID: props.getProperty('RPP_REPORT_PROCESSED_FOLDER_ID'),
@@ -50,6 +52,7 @@ function setScriptProperties_() {
   PropertiesService.getScriptProperties().setProperties(
     {
       RAKUTEN_APP_ID: 'REPLACE_ME',
+      RAKUTEN_ACCESS_KEY: 'REPLACE_ME',
       SPREADSHEET_ID: 'REPLACE_ME',
       RPP_REPORT_FOLDER_ID: 'REPLACE_ME',
       RPP_REPORT_PROCESSED_FOLDER_ID: 'REPLACE_ME',

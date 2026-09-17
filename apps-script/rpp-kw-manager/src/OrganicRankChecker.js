@@ -9,8 +9,10 @@
  * PropertiesService and resuming on the next trigger firing if needed.
  */
 
+// 2026年2月の楽天ウェブサービスAPI移行後のエンドポイント。旧
+// `app.rakuten.co.jp/services/api/...` は使えなくなっている(設計書11章参照)。
 var RAKUTEN_ITEM_SEARCH_ENDPOINT =
-  'https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601';
+  'https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701';
 var MAX_PAGES = 5; // 5 pages x 30 hits = top 150 (設計書4-2)
 var HITS_PER_PAGE = 30;
 var RATE_LIMIT_SLEEP_MS = 1100; // 楽天APIのレート制限(概ね1req/秒)に余裕を見た値
@@ -19,7 +21,7 @@ var PROGRESS_KEY = 'ORGANIC_RANK_CHECK_PROGRESS';
 
 /** Entry point for the Mon/Thu trigger and the spreadsheet menu. */
 function checkOrganicRanks() {
-  var config = requireConfig_(['RAKUTEN_APP_ID', 'SPREADSHEET_ID']);
+  var config = requireConfig_(['RAKUTEN_APP_ID', 'RAKUTEN_ACCESS_KEY', 'SPREADSHEET_ID']);
   var spreadsheet = SpreadsheetApp.openById(config.SPREADSHEET_ID);
   var kwSheet = getSheetOrThrow_(spreadsheet, SHEET_NAMES.KW_MASTER);
   var rankLogSheet = getSheetOrThrow_(spreadsheet, SHEET_NAMES.RANK_LOG);
@@ -58,7 +60,7 @@ function checkOrganicRanks() {
 
     var rank = null;
     try {
-      rank = findOrganicRank_(kw, itemCode, config.RAKUTEN_APP_ID);
+      rank = findOrganicRank_(kw, itemCode, config.RAKUTEN_APP_ID, config.RAKUTEN_ACCESS_KEY);
     } catch (e) {
       Logger.log('自然検索順位チェック失敗 (' + product + ' / ' + kw + '): ' + e.message);
       continue;
@@ -96,13 +98,15 @@ function checkOrganicRanks() {
  * returns the 1-based overall rank of `itemCode`, or null if not found within
  * the searched range (treated as 圏外).
  */
-function findOrganicRank_(keyword, itemCode, appId) {
+function findOrganicRank_(keyword, itemCode, appId, accessKey) {
   for (var page = 1; page <= MAX_PAGES; page++) {
     var url =
       RAKUTEN_ITEM_SEARCH_ENDPOINT +
       '?format=json' +
       '&keyword=' + encodeURIComponent(keyword) +
+      '&genreId=0' + // 2026-02のAPI移行後は必須パラメータ。0=全ジャンル(APIテストフォームの既定値と同じ)
       '&applicationId=' + encodeURIComponent(appId) +
+      '&accessKey=' + encodeURIComponent(accessKey) +
       '&hits=' + HITS_PER_PAGE +
       '&page=' + page +
       '&sort=standard';
@@ -116,7 +120,7 @@ function findOrganicRank_(keyword, itemCode, appId) {
     var items = json.Items || [];
     for (var i = 0; i < items.length; i++) {
       var item = items[i].Item;
-      if (item && item.itemCode === itemCode) {
+      if (item && itemMatches_(item, itemCode)) {
         return (page - 1) * HITS_PER_PAGE + i + 1;
       }
     }
@@ -126,4 +130,21 @@ function findOrganicRank_(keyword, itemCode, appId) {
     Utilities.sleep(RATE_LIMIT_SLEEP_MS);
   }
   return null;
+}
+
+/**
+ * Matches a search-result item against our target itemCode ("shopCode:itemUrlCode").
+ * Handles both the classic combined `item.itemCode` field and a possible
+ * split `item.shopCode`/`item.itemCode` response shape from the 2026-02
+ * API migration, since it wasn't confirmed which one the new version returns
+ * (see docs/rakuten-rpp-management-design.md section 11).
+ */
+function itemMatches_(item, targetItemCode) {
+  if (item.itemCode === targetItemCode) {
+    return true;
+  }
+  if (item.shopCode && item.itemCode && item.shopCode + ':' + item.itemCode === targetItemCode) {
+    return true;
+  }
+  return false;
 }
